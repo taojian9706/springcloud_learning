@@ -196,3 +196,60 @@ public interface PaymentHystrixService {
 易于编写Predicate 断言 和Filter 
 请求限流功能
 支持路径重写过滤器
+```xml
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+```
+```properties
+##网关配置
+##id是路由的id 没有规则 建议和服务名统一 并且唯一
+##uri 匹配后的服务地址
+## predicates断言，路径匹配后的进行路由
+spring.cloud.gateway.routes[0].id=payment_route0
+spring.cloud.gateway.routes[0].uri=lb://cloud-payment-service
+spring.cloud.gateway.routes[0].predicates[0]=Path=/payment/**
+```
+```java
+    /**
+    *@Description 路由配置
+    *@Param [builder]
+    *@Return org.springframework.cloud.gateway.route.RouteLocator
+    *@Author TAOJIAN
+    *@Date 2021/1/21
+    *@Time 11:29
+    */
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        RouteLocatorBuilder.Builder routes = builder.routes();
+        routes.route("path_route_no1", r -> r.path("/guonei")
+            .uri("http://news.baidu.com/guonei")).build();
+        return routes.build();
+    }
+```
+两种配置方式人选一种就可以
+
+全局的gateway网关过滤器
+```java
+@Component
+@Slf4j
+public class MyLogGatewayFilter implements GlobalFilter, Ordered {
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        log.info("come in MyLogGatewayFilter:{}", new Date());
+        String username = exchange.getRequest().getQueryParams().getFirst("username");
+        if (!Optional.ofNullable(username).isPresent()) {
+            log.info("用户名不对");
+            exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+            return exchange.getResponse().setComplete();
+        }
+        return chain.filter(exchange);
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
+    }
+}
+```
